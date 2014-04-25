@@ -44,8 +44,6 @@ echo
 
 for i in "${!LOCAL_SUBVOLS[@]}"; do
 	echo "subvolume: \"${LOCAL_SUBVOLS[$i]}\", remote path: \"${REMOTE_BACKUP_PATHS[$i]}\""
-	sudo btrfs subvolume snapshot -r "${LOCAL_SUBVOLS[$i]}" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP"
-	sync
 
 	# fetch backup directory listings for both hosts
 	LOCAL_LIST=$(ls -1 "${LOCAL_BACKUP_PATHS[$i]}")
@@ -56,16 +54,33 @@ for i in "${!LOCAL_SUBVOLS[@]}"; do
 	# order (newest first), then picking the first row out
 	MOST_RECENT=$(comm -1 -2 <(echo "$LOCAL_LIST") <(echo "$REMOTE_LIST") | sort -r | head -n1)
 
+	# no common snapshot found, send entire subvolume
 	if [[ $MOST_RECENT == "" ]]; then
-		# TODO: in this case send a full snapshot, asking user first
-		echo "ERROR: No common snapshots found for subvolume \"${LOCAL_SUBVOLS[$i]}\", aborting."
-		exit
-	fi
+		echo "no common snapshot found for subvolume: \"${LOCAL_SUBVOLS[$i]}\""
+		echo "do you want to send the entire subvolume instead?"
+		echo "this will probably take a long time. (y/N)"
 
-	echo "sending incremental snapshot from: \"$MOST_RECENT\" to: \"$TIMESTAMP\""
-	echo sudo btrfs send -v -p "${LOCAL_BACKUP_PATHS[$i]}/$MOST_RECENT" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP" \| ssh "$REMOTE" "btrfs receive -v \"${REMOTE_BACKUP_PATHS[$i]}/\""
-	sudo btrfs send -v -p "${LOCAL_BACKUP_PATHS[$i]}/$MOST_RECENT" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP" | ssh "$REMOTE" "btrfs receive -v \"${REMOTE_BACKUP_PATHS[$i]}/\""
-	echo
+		read answer
+		if [[ "$answer" != "y" ]]; then
+			echo "skipping subvolume: \"${LOCAL_SUBVOLS[$i]}\""
+		else
+			# create snapshot
+			sudo btrfs subvolume snapshot -r "${LOCAL_SUBVOLS[$i]}" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP"
+			sync
+
+			echo "sending subvolume: \"${LOCAL_SUBVOLS[$i]}\""
+			sudo btrfs send -v "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP" | ssh "$REMOTE" "btrfs receive -v \"${REMOTE_BACKUP_PATHS[$i]}/\""
+			echo
+		fi
+	else
+		# create snapshot
+		sudo btrfs subvolume snapshot -r "${LOCAL_SUBVOLS[$i]}" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP"
+		sync
+
+		echo "sending incremental snapshot from: \"$MOST_RECENT\" to: \"$TIMESTAMP\""
+		sudo btrfs send -v -p "${LOCAL_BACKUP_PATHS[$i]}/$MOST_RECENT" "${LOCAL_BACKUP_PATHS[$i]}/$TIMESTAMP" | ssh "$REMOTE" "btrfs receive -v \"${REMOTE_BACKUP_PATHS[$i]}/\""
+		echo
+	fi
 done
 
 echo "All done!"
