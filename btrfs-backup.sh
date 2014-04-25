@@ -49,7 +49,7 @@ for i in "${!LOCAL_SUBVOLS[@]}"; do
 
 	# fetch backup directory listings for both hosts
 	LOCAL_LIST=$(ls -1 "${LOCAL_BACKUP_PATHS[$i]}")
-	REMOTE_LIST=$(ssh root@s ls -1 "${REMOTE_BACKUP_PATHS[$i]}")
+	REMOTE_LIST=$(ssh "$REMOTE" ls -1 "${REMOTE_BACKUP_PATHS[$i]}")
 
 	# find most recent subvolume which is on both hosts by first taking the
 	# intersection of $LOCAL_LIST and $REMOTE_LIST, then sorting it in reverse
