@@ -21,9 +21,9 @@
 # respective directories in REMOTE_BACKUP_PATHS.
 
 # Make sure all of these paths exist
-LOCAL_SUBVOLS=(			"/"							"/home"						)
-LOCAL_BACKUP_PATHS=(	"/backup"					"/home/backup"				)
-REMOTE_BACKUP_PATHS=(	"/btrfs/backup_bulky/root"	"/btrfs/backup_bulky/home"	)
+LOCAL_SUBVOLS=(			"/"							"/home"						"/btrfs/vm"					)
+LOCAL_BACKUP_PATHS=(	"/backup"					"/home/backup"				"/btrfs/vm/backup"			)
+REMOTE_BACKUP_PATHS=(	"/btrfs/backup_bulky/root"	"/btrfs/backup_bulky/home"	"/btrfs/backup_bulky/vm"	)
 
 REMOTE="root@s"
 
